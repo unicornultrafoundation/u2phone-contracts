@@ -17,7 +17,7 @@ async function main() {
 	await erc20.waitForDeployment();
 	const erc20Address = await erc20.getAddress();
 
-	const presale = await ethers.deployContract("NFTPresaleManager", [nftAddress, "500", "100", "1733270400", "1735948800", erc20Address], deployer);
+	const presale = await ethers.deployContract("NFTPresaleManager", [nftAddress, 5], deployer);
 
 	console.log("erc20 address:", erc20Address);
 	console.log("nft721 address:", nftAddress);
