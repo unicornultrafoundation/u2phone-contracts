@@ -10,14 +10,14 @@ async function main() {
 	const erc20 = await token.deploy("ERC20Token", "FUSD", 100000);
 
 	const NFT = await ethers.getContractFactory("NFT");
-	const nft721 = await NFT.deploy("U2PhoneNFT", "U2P", "https://example.com/api/v1/token/");
+	const nft721 = await NFT.deploy("UPhoneNFT", "UP", "https://example.com/api/v1/token/");
 	await nft721.waitForDeployment();
 	const nftAddress = await nft721.getAddress();
 
 	await erc20.waitForDeployment();
 	const erc20Address = await erc20.getAddress();
 
-	const presale = await ethers.deployContract("NFTPresaleManager", [nftAddress, 5], deployer);
+	const presale = await ethers.deployContract("NFTPresaleManager", [nftAddress, 10, "0xA30060FD703e6400CA78B7753a89C322aeE78D41"], deployer);
 
 	console.log("erc20 address:", erc20Address);
 	console.log("nft721 address:", nftAddress);

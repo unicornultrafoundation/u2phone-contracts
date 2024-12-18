@@ -5,7 +5,7 @@ module.exports = {
   solidity: {
     compilers: [
       {
-        version: "0.7.6",
+        version: "0.8.19",
         settings: {
           optimizer: {
             enabled: true,
@@ -51,6 +51,7 @@ module.exports = {
     //   u2uTestnet: "hi"
     // },
     apiKey: "RX2H5QQVMY18Q49HDBDC9UTDWES1VNSHEZ",
+    // apiKey: "CZ4CRZ7DG6KPMJB6ASZRNFTWG5EYXJNWA6",
     customChains: [
       {
         network: "u2uTestnet",
