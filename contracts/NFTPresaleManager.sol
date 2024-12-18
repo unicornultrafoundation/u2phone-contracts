@@ -33,11 +33,6 @@ contract NFTPresaleManager is Ownable, EIP712 {
 		uint256 createdAt;
 	}
 
-	struct ReferralInfo {
-		address referrer;
-		uint256 totalCommission;
-	}
-
 	IERC721Mintable public nftContract;
 	address public adminAddress;
 	uint256 public currentRoundId;
@@ -52,7 +47,6 @@ contract NFTPresaleManager is Ownable, EIP712 {
 	// Mapping for sale rounds
 	mapping(uint256 => SaleRound) public saleRounds;
 	// Mapping for referral information
-	mapping(address => ReferralInfo) public referrals;
 	mapping(bytes => bool) public blackListSignature;
 
 	event PaymentTokenUpdated(address indexed token, bool accepted);
@@ -151,6 +145,7 @@ contract NFTPresaleManager is Ownable, EIP712 {
 	function buyNFTWithReferral(
 		uint256 _roundId,
 		address _paymentToken,
+		uint256 _quantity,
 		bytes memory _signature,
 		address _referrer,
 		uint256 createdAt
@@ -178,9 +173,15 @@ contract NFTPresaleManager is Ownable, EIP712 {
 			require(whitelisted[msg.sender], "Not whitelisted");
 		}
 
+		// Check global wallet limit
 		require(
-			nftContract.balanceOf(msg.sender) < maxNFTPerWallet,
-			"Max NFT per wallet reached"
+			nftContract.balanceOf(msg.sender) + _quantity <= maxNFTPerWallet,
+			"Would exceed global max NFT per wallet"
+		);
+		// Check round-specific wallet limit
+		require(
+			round.walletMintedInRound[msg.sender] + _quantity <= round.maxNFTPerWalletInRound,
+			"Would exceed round max NFT per wallet"
 		);
 
 		IERC20 paymentToken = IERC20(_paymentToken);
@@ -200,10 +201,6 @@ contract NFTPresaleManager is Ownable, EIP712 {
 			paymentToken.transfer(_referrer, commission),
 			"Commission transfer failed"
 		);
-
-		// Update referral info
-		referrals[_referrer].referrer = _referrer;
-		referrals[_referrer].totalCommission += commission;
 
 		uint256 tokenId = totalMinted + 1;
 		totalMinted++;
@@ -256,22 +253,6 @@ contract NFTPresaleManager is Ownable, EIP712 {
 			round.totalMinted,
 			round.maxNFTPerWalletInRound,
 			round.walletMintedInRound[msg.sender]
-		);
-	}
-
-	// Get referral info
-	function getReferralInfo(address _referrer)
-	external
-	view
-	returns (
-		address referrer,
-		uint256 totalCommission
-	)
-	{
-		ReferralInfo storage info = referrals[_referrer];
-		return (
-			info.referrer,
-			info.totalCommission
 		);
 	}
 
