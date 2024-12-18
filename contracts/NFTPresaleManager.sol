@@ -6,6 +6,7 @@ import "@openzeppelin/contracts/utils/Address.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 import "@openzeppelin/contracts/utils/cryptography/EIP712.sol";
+import "./libs/TransferHelper.sol";
 
 interface IERC721Mintable {
 	function mint(address to, uint256 tokenId) external;
@@ -55,6 +56,7 @@ contract NFTPresaleManager is Ownable, EIP712 {
 	event SaleRoundCreated(uint256 indexed roundId);
 	event NFTPurchased(address indexed buyer, uint256 tokenId);
 	event ReferralCommissionPaid(address indexed referrer, address indexed buyer, uint256 amount);
+	event MaxNFTPerWalletUpdated(uint256 roundId, uint256 maxNFTPerWallet);
 
 	constructor(
 		address _nftContract,
@@ -159,8 +161,8 @@ contract NFTPresaleManager is Ownable, EIP712 {
 		address _signer = _verifySignature(data, _signature);
 		blackListSignature[_signature] = true;
 		require(_signer == adminAddress, "Invalid input address");
+		require(block.timestamp < createdAt + 300, "Signature is expired");
 
-		require(_referrer != msg.sender, "Cannot refer yourself");
 		require(_referrer != address(0), "Invalid referrer address");
 
 		SaleRound storage round = saleRounds[_roundId];
@@ -184,31 +186,24 @@ contract NFTPresaleManager is Ownable, EIP712 {
 			"Would exceed round max NFT per wallet"
 		);
 
-		IERC20 paymentToken = IERC20(_paymentToken);
-
 		// Calculate commission
-		uint256 commission = (round.price * REFERRAL_COMMISSION) / 100;
-		uint256 finalPrice = round.price;
+		uint256 totalPrice = round.price * _quantity;
+		uint256 commission = (totalPrice * REFERRAL_COMMISSION) / 100;
 
 		// Transfer payment
-		require(
-			paymentToken.transferFrom(msg.sender, address(this), finalPrice),
-			"Payment failed"
-		);
+		TransferHelper.safeTransferFrom(_paymentToken, msg.sender, address(this), totalPrice);
 
 		// Pay commission to referrer
-		require(
-			paymentToken.transfer(_referrer, commission),
-			"Commission transfer failed"
-		);
+		TransferHelper.safeTransfer(_paymentToken, _referrer, commission);
 
-		uint256 tokenId = totalMinted + 1;
-		totalMinted++;
-		round.totalMinted++;
-
-		nftContract.mint(msg.sender, tokenId);
-
-		emit NFTPurchased(msg.sender, tokenId);
+		for (uint256 i = 0; i < _quantity; i++) {
+			uint256 tokenId = totalMinted + 1;
+			totalMinted++;
+			round.totalMinted++;
+			nftContract.mint(msg.sender, tokenId);
+			round.walletMintedInRound[msg.sender]++;
+			emit NFTPurchased(msg.sender, tokenId);
+		}
 		emit ReferralCommissionPaid(_referrer, msg.sender, commission);
 	}
 
@@ -217,13 +212,21 @@ contract NFTPresaleManager is Ownable, EIP712 {
 		IERC20 token = IERC20(_token);
 		uint256 balance = token.balanceOf(address(this));
 		require(balance > 0, "No funds to withdraw");
-		require(token.transfer(owner(), balance), "Transfer failed");
+		TransferHelper.safeTransfer(_token, owner(), balance);
 	}
 
 	// Set max NFT per wallet
 	function setMaxNFTPerWallet(uint256 _maxNFTPerWallet) external onlyOwner {
 		require(_maxNFTPerWallet > 0, "Invalid max NFT per wallet");
 		maxNFTPerWallet = _maxNFTPerWallet;
+	}
+
+	// Set max NFT per wallet in round
+	function setMaxNFTPerWallet(uint256 _roundId, uint256 _maxNFTPerWallet) external onlyOwner {
+		require(_maxNFTPerWallet > 0, "Invalid max NFT per wallet");
+		SaleRound storage round = saleRounds[_roundId];
+		round.maxNFTPerWalletInRound = _maxNFTPerWallet;
+		emit MaxNFTPerWalletUpdated(_roundId, _maxNFTPerWallet);
 	}
 
 	// Get round info
