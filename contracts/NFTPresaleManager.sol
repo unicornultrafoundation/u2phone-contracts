@@ -24,6 +24,8 @@ contract NFTPresaleManager is Ownable, EIP712 {
 		uint256 price;
 		bool whitelistOnly;
 		uint256 totalMinted;
+		uint256 maxNFTPerWalletInRound;
+		mapping(address => uint256) walletMintedInRound;
 	}
 
 	struct ReferrerSignatureHashInfo {
@@ -85,8 +87,64 @@ contract NFTPresaleManager is Ownable, EIP712 {
 	}
 
 	modifier onlyNotBlacklisted(bytes memory signature) {
-		require(blackListSignature[signature], "Only signature has not been used");
+		require(blackListSignature[signature] == false, "Only signature has not been used");
 		_;
+	}
+
+	// Set accepted payment token
+	function setPaymentToken(address _token, bool _accepted) external onlyOwner {
+		require(_token.isContract(), "Invalid token address");
+		acceptedPaymentTokens[_token] = _accepted;
+		emit PaymentTokenUpdated(_token, _accepted);
+	}
+
+	// Create new sale round
+	function createSaleRound(
+		uint256 _startTime,
+		uint256 _endTime,
+		uint256 _maxSupply,
+		uint256 _price,
+		bool _whitelistOnly,
+		uint256 _maxNFTPerWalletInRound
+	) external onlyOwner {
+		require(_startTime < _endTime, "Start must be before end");
+		require(_maxSupply > 0, "Invalid max supply");
+		require(_price > 0, "Invalid price");
+		require(_maxNFTPerWalletInRound > 0, "Invalid max NFT per wallet in round");
+
+		currentRoundId++;
+
+		SaleRound storage newRound = saleRounds[currentRoundId];
+		newRound.id = currentRoundId;
+		newRound.startTime = _startTime;
+		newRound.endTime = _endTime;
+		newRound.maxSupply = _maxSupply;
+		newRound.price = _price;
+		newRound.whitelistOnly = _whitelistOnly;
+		newRound.totalMinted = 0;
+		newRound.maxNFTPerWalletInRound = _maxNFTPerWalletInRound;
+
+		emit SaleRoundCreated(currentRoundId);
+	}
+
+	// Add to whitelist (single address)
+	function addToWhitelist(address account) external onlyOwner {
+		whitelisted[account] = true;
+		emit Whitelisted(account);
+	}
+
+	// Add to whitelist (batch)
+	function addToWhitelistBatch(address[] calldata accounts) external onlyOwner {
+		for (uint256 i = 0; i < accounts.length; i++) {
+			whitelisted[accounts[i]] = true;
+			emit Whitelisted(accounts[i]);
+		}
+	}
+
+	// Remove from whitelist
+	function removeFromWhitelist(address account) external onlyOwner {
+		whitelisted[account] = false;
+		emit RemovedFromWhitelist(account);
 	}
 
 	// Purchase NFT with referral
@@ -105,6 +163,7 @@ contract NFTPresaleManager is Ownable, EIP712 {
 		ReferrerSignatureHashInfo memory data = ReferrerSignatureHashInfo({referrer: _referrer, createdAt: createdAt});
 		address _signer = _verifySignature(data, _signature);
 		blackListSignature[_signature] = true;
+		require(_signer == adminAddress, "Invalid input address");
 
 		require(_referrer != msg.sender, "Cannot refer yourself");
 		require(_referrer != address(0), "Invalid referrer address");
@@ -154,6 +213,50 @@ contract NFTPresaleManager is Ownable, EIP712 {
 
 		emit NFTPurchased(msg.sender, tokenId);
 		emit ReferralCommissionPaid(_referrer, msg.sender, commission);
+	}
+
+	// Withdraw funds for specific token
+	function withdrawFunds(address _token) external onlyOwner validPaymentToken(_token) {
+		IERC20 token = IERC20(_token);
+		uint256 balance = token.balanceOf(address(this));
+		require(balance > 0, "No funds to withdraw");
+		require(token.transfer(owner(), balance), "Transfer failed");
+	}
+
+	// Set max NFT per wallet
+	function setMaxNFTPerWallet(uint256 _maxNFTPerWallet) external onlyOwner {
+		require(_maxNFTPerWallet > 0, "Invalid max NFT per wallet");
+		maxNFTPerWallet = _maxNFTPerWallet;
+	}
+
+	// Get round info
+	function getRoundInfo(uint256 _roundId)
+	external
+	view
+	returns (
+		uint256 id,
+		uint256 startTime,
+		uint256 endTime,
+		uint256 maxSupply,
+		uint256 price,
+		bool whitelistOnly,
+		uint256 totalMintedInRound,
+		uint256 maxNFTPerWalletInRound,
+		uint256 walletMinted
+	)
+	{
+		SaleRound storage round = saleRounds[_roundId];
+		return (
+			round.id,
+			round.startTime,
+			round.endTime,
+			round.maxSupply,
+			round.price,
+			round.whitelistOnly,
+			round.totalMinted,
+			round.maxNFTPerWalletInRound,
+			round.walletMintedInRound[msg.sender]
+		);
 	}
 
 	// Get referral info
