@@ -5,9 +5,9 @@ async function main() {
     const [deployer] = await ethers.getSigners();
 
     console.log("Setup contracts with the account:", deployer.address);
-    const erc20Address = "0x57b616B768f7161Aab6d0c01135312FaCfA57A44";
-    const erc721Address = "0x7bD59378B581BaE4a22FaeF833C77D98D98dA82F";
-    const saleAddress = "0x5f482F4B9eDC38E10DC2D02588E77462Ab003cF3";
+    const erc20Address = "0x676998554fFC3E5B387D3A3EFEc782c83B9EBd08";
+    const erc721Address = "0xD540788fE62f57ace9795dFb8a9C81af9d7EECb7";
+    const saleAddress = "0xD4F6acb05eAd15266F4011aB1268c906ca4f6De1";
 
     const token = await (await ethers.getContractFactory("ERC20Token")).attach(erc20Address);
     await token.approve(saleAddress, "3490000000000000000000");
@@ -17,7 +17,13 @@ async function main() {
 
     const sale = await (await ethers.getContractFactory("NFTPresaleManager")).attach(saleAddress);
     await sale.setPaymentToken(erc20Address, true);
-    await sale.createSaleRound("1734393600", "1734739200", 500, "349000000000000000000", false, 3);
+    // 1734663600: 2024/12/20 10AM GMT7+
+    // 1737392399: 2025/01/20 12PM GMT7+
+    // 500 max supply
+    // 349 usdt
+    // no whitelist round
+    // 1 limit nft per wallet
+    await sale.createSaleRound("1734663600", "1737392399", 500, "349000000000000000000", false, 1);
 }
 
 main()

@@ -50,8 +50,8 @@ module.exports = {
     // apiKey: {
     //   u2uTestnet: "hi"
     // },
-    apiKey: "RX2H5QQVMY18Q49HDBDC9UTDWES1VNSHEZ",
-    // apiKey: "CZ4CRZ7DG6KPMJB6ASZRNFTWG5EYXJNWA6",
+    // apiKey: "RX2H5QQVMY18Q49HDBDC9UTDWES1VNSHEZ",
+    apiKey: "CZ4CRZ7DG6KPMJB6ASZRNFTWG5EYXJNWA6", // bsc api key
     customChains: [
       {
         network: "u2uTestnet",
