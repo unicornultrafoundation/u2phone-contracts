@@ -5,9 +5,9 @@ async function main() {
     const [deployer] = await ethers.getSigners();
 
     console.log("Setup contracts with the account:", deployer.address);
-    const erc20Address = "0x676998554fFC3E5B387D3A3EFEc782c83B9EBd08";
-    const erc721Address = "0xD540788fE62f57ace9795dFb8a9C81af9d7EECb7";
-    const saleAddress = "0xD4F6acb05eAd15266F4011aB1268c906ca4f6De1";
+    const erc20Address = "0x252eB9Ba7a18acd54DaaEEaD027C80D4c77b47F8";
+    const erc721Address = "0x210C601d2E1d9e45Ff4287FB7FDEE77f51aeE987";
+    const saleAddress = "0xdcA348c8a9005a38F8eb1B9383686E55104fbfc4";
 
     const token = await (await ethers.getContractFactory("ERC20Token")).attach(erc20Address);
     await token.approve(saleAddress, "3490000000000000000000");

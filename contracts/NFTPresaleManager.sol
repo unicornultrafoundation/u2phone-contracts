@@ -27,6 +27,7 @@ contract NFTPresaleManager is Ownable, EIP712 {
 		uint256 totalMinted;
 		uint256 maxNFTPerWalletInRound;
 		mapping(address => uint256) walletMintedInRound;
+		bool isRoundEnded;
 	}
 
 	struct ReferrerSignatureHashInfo {
@@ -119,6 +120,7 @@ contract NFTPresaleManager is Ownable, EIP712 {
 		newRound.whitelistOnly = _whitelistOnly;
 		newRound.totalMinted = 0;
 		newRound.maxNFTPerWalletInRound = _maxNFTPerWalletInRound;
+		newRound.isRoundEnded = false;
 
 		emit SaleRoundCreated(currentRoundId);
 	}
@@ -170,6 +172,7 @@ contract NFTPresaleManager is Ownable, EIP712 {
 		require(block.timestamp >= round.startTime, "Round not started");
 		require(block.timestamp <= round.endTime, "Round ended");
 		require(round.totalMinted < round.maxSupply, "Round max supply reached");
+		require(!round.isRoundEnded, "Round has ended");
 
 		if (round.whitelistOnly) {
 			require(whitelisted[msg.sender], "Not whitelisted");
@@ -227,6 +230,11 @@ contract NFTPresaleManager is Ownable, EIP712 {
 		SaleRound storage round = saleRounds[_roundId];
 		round.maxNFTPerWalletInRound = _maxNFTPerWallet;
 		emit MaxNFTPerWalletUpdated(_roundId, _maxNFTPerWallet);
+	}
+
+	function setRoundEnd(uint256 _roundId, bool status) external onlyOwner {
+		SaleRound storage round = saleRounds[_roundId];
+		round.isRoundEnded = status;
 	}
 
 	// Get round info
